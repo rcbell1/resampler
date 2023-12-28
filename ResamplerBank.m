@@ -241,42 +241,58 @@ classdef ResamplerBank < handle
             input_size = this.Nfft/2;
         end
 
-        function channels = process(this, in)
+        function channels = process(this, input)
             channels = cell(this.Nchannels);
             % Do the STFT processing that is common to all output channels
             % here
+            slice = [this.stft_in_buf input];
+            this.stft_in_buf = input;
+
+%             start_idx = abs(this.Niffts(this.ch_idx)/2 - this.Nfft/2) + 1;
+            if this.up_facs(this.ch_idx) >= this.down_facs(this.ch_idx)
+%                 stop_idx = start_idx + this.Nfft - 1;
+                fft_out = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
+%                 this.stft_out_buf{this.ch_idx}(start_idx:stop_idx) = fft_out;
+            else
+%                 stop_idx = start_idx + this.Niffts(this.ch_idx) - 1;
+%                 this.stft_out_buf{this.ch_idx} = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
+                fft_out = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
+%                 fft_out = this.channel_filts{this.ch_idx} .* ...
+%                         this.stft_out_buf{this.ch_idx}(start_idx:stop_idx);
+            end
 
             % In this loop is each of the ISTFT processing that is
             % different for each output channels
             for nn = 1:this.Nchannels
                 this.ch_idx = nn;
-                channels{this.ch_idx} = this.resample(in);
+                channels{this.ch_idx} = this.synthesize(fft_out);
             end
         end
     end
 
     methods (Access = private)
-        function out = resample(this, input)
-                slice = [this.stft_in_buf input];
-                this.stft_in_buf = input;
+        function out = synthesize(this, input)
+%                 slice = [this.stft_in_buf input];
+%                 this.stft_in_buf = input;
 
                 start_idx = abs(this.Niffts(this.ch_idx)/2 - this.Nfft/2) + 1;
                 if this.up_facs(this.ch_idx) >= this.down_facs(this.ch_idx)
                     stop_idx = start_idx + this.Nfft - 1;
-                    temp = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
-                    this.stft_out_buf{this.ch_idx}(start_idx:stop_idx) = temp;
+%                     temp = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
+                    this.stft_out_buf{this.ch_idx}(start_idx:stop_idx) = input;
                     % Insert a filter sequence with passband equal to the desired occupied
                     % bandwidth. Multiply ifft_out by this filter before taking ifft.
                     ifft_out = ifft(ifftshift(this.stft_out_buf{this.ch_idx}));
                 else
                     stop_idx = start_idx + this.Niffts(this.ch_idx) - 1;
-                    this.stft_out_buf{this.ch_idx} = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*fftshift(fft(slice.*this.stft_win));
+                    this.stft_out_buf{this.ch_idx} = input;
                     % Insert a filter sequence with passband equal to the desired occupied
                     % bandwidth. Multiply ifft_out by this filter before taking ifft.
 %                     wfft_out = this.channel_filts{this.ch_idx} .* ...
 %                         this.stft_out_buf{this.ch_idx}(start_idx:stop_idx);
-                    wfft_out = this.stft_out_buf{this.ch_idx}(start_idx:stop_idx);
-                    ifft_out = ifft(ifftshift(wfft_out));
+%                     wfft_out = this.stft_out_buf{this.ch_idx}(start_idx:stop_idx);
+%                     ifft_out = ifft(ifftshift(wfft_out));
+                    ifft_out = ifft(ifftshift(this.stft_out_buf{this.ch_idx}(start_idx:stop_idx)));
                 end
                 out = ifft_out(1:this.Niffts(this.ch_idx)/2) + this.istft_out_bufs{this.ch_idx}; % slice by slice version
                 this.istft_out_bufs{this.ch_idx} = ifft_out(this.Niffts(this.ch_idx)/2+1:end);
