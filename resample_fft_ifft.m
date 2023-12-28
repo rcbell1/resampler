@@ -13,8 +13,8 @@ close all; clear
 
 % Resampler parameters
 Nfft_min = 2048; % minimum FFT size, true value can be larger as needed
-up_fac = 2;      % upsampling factor
-down_fac = 7;   % downsampling factor
+up_fac = 1;      % upsampling factor
+down_fac = 11;   % downsampling factor
 
 % Input signal parameters
 % Nsamps = 10000;  % total number of input samples
