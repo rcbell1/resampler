@@ -12,7 +12,6 @@ classdef ResamplerBank < handle
     %   filtered down to roughly this amount.
 
     % TODO:
-    % 1) Replace the need for gcd matlab call for rust reasons
     % 3) Make the filter in freq domain work
     % 8) If Nifft is small (i.e. up_fac/down_fac small ~1/30) for an output
     % channel, there is some small phase offset that begins to be visible

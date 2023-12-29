@@ -1,8 +1,8 @@
 close all; clear
 % Resampler parameters
 input_size_request = 1024; % requested samples per input slice
-up_facs = [1 1 1];      % upsampling factor
-down_facs = [42 31 4];   % downsampling factor
+up_facs = [3 1 1];      % upsampling factor
+down_facs = [127 31 4];   % downsampling factor
 
 % Input signal parameters
 Nsamps = 10e4;  % total number of input samples
@@ -58,19 +58,20 @@ end
 %% Plotting
 Nfft = rsb_plan_obj.get_stft_size();
 Niffts = rsb_plan_obj.get_istft_sizes();
+
 % Time domain figures
-%             figure
-%             subplot(211)
-%             plot(real(input))
-%             title("Real Input")
-%             xlabel('Sample Number')
-%             ylabel('Amplitude')
-%
-%             subplot(212)
-%             plot(imag(input))
-%             title("Imag Input")
-%             xlabel('Sample Number')
-%             ylabel('Amplitude')
+figure
+subplot(211)
+plot(real(input))
+title("Real Input")
+xlabel('Sample Number')
+ylabel('Amplitude')
+
+subplot(212)
+plot(imag(input))
+title("Imag Input")
+xlabel('Sample Number')
+ylabel('Amplitude')
 
 for nn = 1:length(fcs_out)
     figure
@@ -137,3 +138,37 @@ for nn = 1:length(fcs_out)
     grid; grid minor
     legend('Output','Expected Output')
 end
+
+% All frequency domains input and output
+Nchannels = length(fcs_out);
+t = tiledlayout(2, Nchannels);
+
+% First plot spanning the entire first row
+ax1 = nexttile(t, [1, Nchannels]);
+Nfftp = length(input);
+faxis = fs*1e-3*(-0.5:1/Nfftp:0.5-1/Nfftp);
+plot(ax1, faxis, 10*log10(abs(fftshift(fft(input,Nfftp)).^2)));  % Replace '...' with your plotting command
+xlabel('Frequency (kHz)')
+ylabel('Log Mag Squared')
+xticks(-fs/2*1e-3:5:fs/2*1e-3)
+title(sprintf('Original Spectrum, fs %.1f ksps', fs*1e-3))
+xlim('tight')
+grid; grid minor
+
+% Next 10 plots in the remaining positions
+for nn = 1:Nchannels
+    ax = nexttile(t);
+    Nfftp = length(out{nn});
+    faxis = fcs_out(nn)*1e-3 + fsrs(nn)*1e-3*(-0.5:1/Nfftp:0.5-1/Nfftp);
+    plot(ax, faxis, 10*log10(abs(fftshift(fft(out{nn},Nfftp)).^2)),'.-');
+    xlabel('Frequency (kHz)')
+    ylabel('Log Mag Squared')
+    title(sprintf("Resampled Spectrum, fs %.3f ksps, Nfft %i, Nifft %i, Up Fac %i, Down Fac %i, fc %.1f kHz", fsrs(nn)*1e-3, Nfft, Niffts(nn), up_facs(nn), down_facs(nn), fcs_out(nn)*1e-3))
+    xlim('tight')
+    ylim([-30 70])
+    grid; grid minor
+end
+
+% Adjusting layout
+t.TileSpacing = 'compact';
+t.Padding = 'compact';

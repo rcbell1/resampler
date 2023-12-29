@@ -15,6 +15,18 @@ classdef ResamplerPlan
         fs_outs
     end
 
+    methods (Static)
+        function divisor = gcdc(a,b)
+            % Custom implementation of greatest common divisor 
+            while b ~= 0
+                temp = b;
+                b = mod(a,b);
+                a = temp;
+            end
+            divisor = abs(a);
+        end
+    end
+
     methods
         function this = ResamplerPlan(Nsamps, fs, P, Q, fcs, bws)
             arguments
@@ -51,7 +63,7 @@ classdef ResamplerPlan
                     || any(this.up_facs < 0) || any(this.down_facs < 0)
                 error('USER ERROR: up_fac and down_fac must be positive integers.');
             end
-            gcd_val = gcd(this.up_facs, this.down_facs);
+            gcd_val = ResamplerPlan.gcdc(this.up_facs, this.down_facs);
             if gcd_val ~= 1
                 this.up_facs = this.up_facs./gcd_val;
                 this.down_facs = this.down_facs./gcd_val;
@@ -68,6 +80,15 @@ classdef ResamplerPlan
             if any(mod(this.Niffts,2) ~= 0)
                 error('ERROR: Nifft is not an even number, something went wrong.')
             end 
+
+
+%             a = randperm(1000);
+%             b = randperm(1000);
+%             gcd_val = gcd(a,b);
+%             for nn = 1:length(a)
+%                 gcdc_val(nn) = ResamplerPlan.gcdc(a(nn),b(nn));
+%             end
+%             sum(gcd_val == gcdc_val);
         end
 
         function input_size = get_input_size(this)
