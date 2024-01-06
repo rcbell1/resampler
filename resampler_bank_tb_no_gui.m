@@ -2,11 +2,11 @@ close all; clear
 
 % Test params
 fs_max = 100e6;
-fc_max_off = 5e3; % maximum difference betweeen output channel fc and input signal fc
-num_outputs_max = 2;
+num_outputs_max = 5;
 up_max = 10;
 down_min = 1;
 down_max = 100;
+bw_out_max = 2e6;
 max_input_size_request = 2^12;
 
 % Resampler test params
@@ -17,11 +17,11 @@ up_facs = randi([1 up_max], 1, num_outputs);
 % down_facs = randi([down_min down_max], 1, num_outputs);
 down_facs = ones(1,num_outputs)*randi([down_min down_max]);
 % up_facs(up_facs > down_facs) = down_facs(up_facs > down_facs) - 1; % just fixing resample factor < 1 for now, remove this when up_factor tests are fixed
-bws_out = min(fs*up_facs./down_facs, fs*rand(1,num_outputs));
+bws_out = min(fs*up_facs./down_facs.*rand(1,num_outputs), bw_out_max);
+% bws_out = 1e5*ones(1,num_outputs);
 fcs_out = (fs/2 - fs/2*up_facs./down_facs).*(2*rand(1,num_outputs)-1);
 
 % Input signal test params
-% fcs_in = fcs_out + fc_max_off*rand(1,num_outputs);
 fcs_in = fcs_out;
 bws_in = min(0.8*bws_out, fs_max*rand(1,num_outputs));
 % bws_in = ones(1, num_outputs);

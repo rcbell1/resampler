@@ -1,6 +1,6 @@
 close all; clear
 % Resampler parameters
-input_size_request = 128; % requested samples per input slice
+input_size_request = 4096; % requested samples per input slice
 fs = 100e6;      % sample rate (Hz)
 
 % Some arbitrary selections
@@ -10,10 +10,10 @@ fs = 100e6;      % sample rate (Hz)
 % bws_out = [1.1e6 2.1e6 3.1e6];   % the output channels will be filtered down to these bandwidths
 
 % Single output channel
-up_facs = [15];      % upsampling factor
-down_facs = [7];   % downsampling factor
-fcs_out = [4e6];
-bws_out = [5e6];   % the output channels will be filtered down to these bandwidths
+% up_facs = [9];      % upsampling factor
+% down_facs = [7];   % downsampling factor
+% fcs_out = [34e6];
+% bws_out = [11e6];   % the output channels will be filtered down to these bandwidths
 
 % Overlapping output channels
 % up_facs = [3 3 1 61];      % upsampling factor
@@ -22,20 +22,20 @@ bws_out = [5e6];   % the output channels will be filtered down to these bandwidt
 % bws_out = [310, 360, 410, 460];
 
 % ECTB Example 
-% up_facs = [1 1 1 1 1 1 1 1];
-% down_facs = [50 50 50 50 50 50 50 50];
-% fcs_out = [-2e6 -1.5e6 -1e6 -0.5e6 0e6 0.5e6 1e6 1.5e6];
-% bws_out = [230e3 230e3 230e3 230e3 230e3 230e3 230e3 230e3];
+up_facs = [1 1 1 1 1 1 1 1];
+down_facs = [50 50 50 50 50 50 50 50];
+fcs_out = [-2e6 -1.5e6 -1e6 -0.5e6 0e6 0.5e6 1e6 1.5e6];
+bws_out = [230e3 230e3 230e3 230e3 230e3 230e3 230e3 230e3];
 
 % Input signal parameters
 % fcs_in = [4e6 -4e6 21e6];   % relative center frequency of input to produce at bb of output channel
 % bws_in = [1e6 2e6 3e6];
-fcs_in = [4e6];   % relative center frequency of input to produce at bb of output channel
-bws_in = [1e6];        % bandwidths, if bw = 1 a complex tone will be generated
+% fcs_in = [34e6];   % relative center frequency of input to produce at bb of output channel
+% bws_in = [10e6];        % bandwidths, if bw = 1 a complex tone will be generated
 % fcs_in = [-1e3 0 1e3 2e3];
 % bws_in = [250, 300, 350, 400];
-% fcs_in = fcs_out;
-% bws_in = [200e3 200e3 200e3 200e3 200e3 200e3 200e3 200e3];
+fcs_in = fcs_out;
+bws_in = [200e3 200e3 200e3 200e3 200e3 200e3 200e3 200e3];
 
 % Create resampler plan
 rsb_plan_obj = ResamplerPlan(input_size_request, fs, up_facs, down_facs, fcs_out, bws_out);
@@ -136,6 +136,7 @@ for nn = 1:length(fcs_out)
     subplot(611)
     plot(real(out{nn}), '.-'); hold all
     plot(real(expected_out{nn}(1:length(out{nn}))), 'o-')
+    axis([-inf inf -1 1])
     xlim('tight')
     xlabel('Sample Number')
     ylabel('Amplitude')
@@ -145,7 +146,7 @@ for nn = 1:length(fcs_out)
     subplot(612)
     plot(imag(out{nn}), '.-'); hold all
     plot(imag(expected_out{nn}(1:length(out{nn}))), 'o-')
-    xlim('tight')
+    axis([-inf inf -1 1])
     xlabel('Sample Number')
     ylabel('Amplitude')
     title("Imag Output")
@@ -211,7 +212,6 @@ in_f = in_f/max(in_f);
 plot(ax1, faxis, 10*log10(in_f)); hold all
 xlabel(sprintf('Frequency (%s)', unit_string))
 ylabel('Log Mag Squared')
-% xticks(-fs/2*1e-3:5:fs/2*1e-3)
 title(sprintf('Original Spectrum, fs %.1f ksps', fs*1e-3))
 grid; grid minor
 
@@ -224,11 +224,12 @@ for nn = 1:Nchannels
     fc_out = rsb_plan_obj.get_fc_out(nn);
     faxis_filt = fc_out*unit_scale + fs_out*unit_scale*(-0.5:1/Nifft:0.5-1/Nifft);
     plot(ax1, faxis_filt, 10*log10(abs(filt_taps).^2),'.-');
-    axis([-fs*unit_scale/2 fs*unit_scale/2 -120 10])
+    axis(ax1, [-fs*unit_scale/2 fs*unit_scale/2 -120 10])
 
     ax = nexttile(t);
     Nfftp = length(out{nn});
-    faxis = fcs_out(nn)*unit_scale + fsrs(nn)*unit_scale*(-0.5:1/Nfftp:0.5-1/Nfftp);
+%     faxis = fcs_out(nn)*unit_scale + fsrs(nn)*unit_scale*(-0.5:1/Nfftp:0.5-1/Nfftp);
+    faxis = fc_out*unit_scale + fs_out*unit_scale*(-0.5:1/Nfftp:0.5-1/Nfftp);
     out_f = abs(fftshift(fft(out{nn}/max(out{nn}),Nfftp)).^2);
     out_f = out_f/max(out_f);
     plot(ax, faxis, 10*log10(out_f),'.-'); hold all
