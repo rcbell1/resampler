@@ -20,8 +20,8 @@ down_fac = 11;   % downsampling factor
 % Nsamps = 10000;  % total number of input samples
 Nsamps = 100*2052/2;  % total number of input samples
 fs = 100e3;      % sample rate (Hz)
-fc = 5e3;          % center frequency
-bw = 2e3;        % bandwidth, if bw = 1 a complex tone will be generated
+fc = 2e3;          % center frequency
+bw = 1;        % bandwidth, if bw = 1 a complex tone will be generated
 fsrs = fs*up_fac/down_fac;  % sampling rate after resampling
 
 %% Compute dependent resampler parameters and memory allocation

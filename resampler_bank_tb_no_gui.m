@@ -1,49 +1,38 @@
 close all; clear
-% Resampler parameters
-input_size_request = 128; % requested samples per input slice
-fs = 100e6;      % sample rate (Hz)
 
-% Some arbitrary selections
-% up_facs = [3 4 15];      % upsampling factor
-% down_facs = [127 3 7];   % downsampling factor
-% fcs_out = [4e6 -4e6 21e6];
-% bws_out = [1.1e6 2.1e6 3.1e6];   % the output channels will be filtered down to these bandwidths
+% Test params
+fs_max = 100e6;
+fc_max_off = 5e3; % maximum difference betweeen output channel fc and input signal fc
+num_outputs_max = 2;
+up_max = 10;
+down_min = 1;
+down_max = 100;
+max_input_size_request = 2^12;
 
-% Single output channel
-up_facs = [15];      % upsampling factor
-down_facs = [7];   % downsampling factor
-fcs_out = [4e6];
-bws_out = [5e6];   % the output channels will be filtered down to these bandwidths
+% Resampler test params
+fs = fs_max*rand;
+input_size_request = randi([0,max_input_size_request]);
+num_outputs = randi([1 num_outputs_max]);
+up_facs = randi([1 up_max], 1, num_outputs);
+% down_facs = randi([down_min down_max], 1, num_outputs);
+down_facs = ones(1,num_outputs)*randi([down_min down_max]);
+% up_facs(up_facs > down_facs) = down_facs(up_facs > down_facs) - 1; % just fixing resample factor < 1 for now, remove this when up_factor tests are fixed
+bws_out = min(fs*up_facs./down_facs, fs*rand(1,num_outputs));
+fcs_out = (fs/2 - fs/2*up_facs./down_facs).*(2*rand(1,num_outputs)-1);
 
-% Overlapping output channels
-% up_facs = [3 3 1 61];      % upsampling factor
-% down_facs = [100 10 20 1000];   % downsampling factor
-% fcs_out = [-1e3 0e3 1e3 2e3];
-% bws_out = [310, 360, 410, 460];
+% Input signal test params
+% fcs_in = fcs_out + fc_max_off*rand(1,num_outputs);
+fcs_in = fcs_out;
+bws_in = min(0.8*bws_out, fs_max*rand(1,num_outputs));
+% bws_in = ones(1, num_outputs);
 
-% ECTB Example 
-% up_facs = [1 1 1 1 1 1 1 1];
-% down_facs = [50 50 50 50 50 50 50 50];
-% fcs_out = [-2e6 -1.5e6 -1e6 -0.5e6 0e6 0.5e6 1e6 1.5e6];
-% bws_out = [230e3 230e3 230e3 230e3 230e3 230e3 230e3 230e3];
-
-% Input signal parameters
-% fcs_in = [4e6 -4e6 21e6];   % relative center frequency of input to produce at bb of output channel
-% bws_in = [1e6 2e6 3e6];
-fcs_in = [4e6];   % relative center frequency of input to produce at bb of output channel
-bws_in = [1e6];        % bandwidths, if bw = 1 a complex tone will be generated
-% fcs_in = [-1e3 0 1e3 2e3];
-% bws_in = [250, 300, 350, 400];
-% fcs_in = fcs_out;
-% bws_in = [200e3 200e3 200e3 200e3 200e3 200e3 200e3 200e3];
-
-% Create resampler plan
+% Create a resampler plan
 rsb_plan_obj = ResamplerPlan(input_size_request, fs, up_facs, down_facs, fcs_out, bws_out);
 input_size = rsb_plan_obj.get_input_size();
-Nsamps = 40*input_size;  % total number of input samples
+Nsamps = 10*input_size;  % total number of input samples
 
 fprintf(1, "Sim details - Size Request: %i, Nout: %i, Nsamps: %i, fs %.1f sps, NFFT %i, NIFFTs: [%s], ups: [%s], downs: [%s]\n", ...
-        input_size_request, length(up_facs), Nsamps, fs, rsb_plan_obj.get_stft_size(), ...
+        input_size_request, num_outputs, Nsamps, fs, rsb_plan_obj.get_stft_size(), ...
         num2str(rsb_plan_obj.get_istft_sizes(), '%i '), ...
         num2str(up_facs, '%i '), num2str(down_facs, '%i '));
 
@@ -97,7 +86,6 @@ end
 for nn = 1:length(fcs_out)
     nfft = rsb_plan_obj.get_stft_size;
     nifft = rsb_plan_obj.get_istft_size(nn);
-    output_size = rsb_plan_obj.get_output_size(nn);
     start = ceil(nifft/2) + 1;
     etol = 1e-2;
     Nsamps = length(out{nn}(start:end-start+1));
@@ -107,8 +95,8 @@ for nn = 1:length(fcs_out)
     else
         outcome = "FAIL";
     end
-    fprintf(1, "%s - Channel %i: Input Size %i, Output Size %i, NFFT %i, NIFFT %i, Up %i, Down %i, Samples outside tolerance (%.0e): %i of %i\n", ...
-        outcome, nn, input_size, output_size, nfft, nifft, up_facs(nn), down_facs(nn), etol, Ndeviations, Nsamps)
+    fprintf(1, "%s - Channel %i: NFFT %i, NIFFT %i, Up %i, Down %i, Samples outside tolerance (%.0e): %i of %i\n", ...
+        outcome, nn, nfft, nifft, up_facs(nn), down_facs(nn), etol, Ndeviations, Nsamps)
 end
 
 %% Plotting
@@ -213,6 +201,7 @@ xlabel(sprintf('Frequency (%s)', unit_string))
 ylabel('Log Mag Squared')
 % xticks(-fs/2*1e-3:5:fs/2*1e-3)
 title(sprintf('Original Spectrum, fs %.1f ksps', fs*1e-3))
+axis([-inf inf -120 10])
 grid; grid minor
 
 % Next plots in the remaining positions
@@ -224,7 +213,6 @@ for nn = 1:Nchannels
     fc_out = rsb_plan_obj.get_fc_out(nn);
     faxis_filt = fc_out*unit_scale + fs_out*unit_scale*(-0.5:1/Nifft:0.5-1/Nifft);
     plot(ax1, faxis_filt, 10*log10(abs(filt_taps).^2),'.-');
-    axis([-fs*unit_scale/2 fs*unit_scale/2 -120 10])
 
     ax = nexttile(t);
     Nfftp = length(out{nn});

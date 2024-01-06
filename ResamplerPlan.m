@@ -54,16 +54,21 @@ classdef ResamplerPlan
             this.bandwidths_out = bws;
             this.fs_outs = this.sample_rate_in*this.up_facs./this.down_facs;
 
-            if any(this.fs_outs < bws)
-                error('USER ERROR: Your choice of fc, bw and up_fac/down_fac will cause aliasing in the output channel!')
-            end
+%             if any(abs(this.center_freqs_out) + this.fs_outs/2 > this.sample_rate_in/2)
+%                 error('USER ERROR: The center frequencies out plus half the output sample rate must be between -sample_rate_in/2 and sample_rate_in/2.')
+%             end
+%             if any(this.fs_outs < bws)
+%                 error('USER ERROR: Your choice of fc, bw and up_fac/down_fac will cause aliasing in the output channel.')
+%             end
 
             % Make up_fac and down_fac as small as possible while preserving ratio
             if any(rem(this.up_facs,1)) || any(rem(this.down_facs,1)) ...
-                    || any(this.up_facs < 0) || any(this.down_facs < 0)
+                    || any(this.up_facs < 1) || any(this.down_facs < 1)
                 error('USER ERROR: up_fac and down_fac must be positive integers.');
             end
-            gcd_val = ResamplerPlan.gcdc(this.up_facs, this.down_facs);
+            for nn = 1:length(this.fs_outs)
+                gcd_val(nn) = ResamplerPlan.gcdc(this.up_facs(nn), this.down_facs(nn));
+            end
             if gcd_val ~= 1
                 this.up_facs = this.up_facs./gcd_val;
                 this.down_facs = this.down_facs./gcd_val;
@@ -72,23 +77,21 @@ classdef ResamplerPlan
             % Determine FFT size that will support the resample ratio (up_fac/down_fac)
             % The requirement is FFT size divided by down_fac must be even so that the
             % needed number of spectrum sample pairs can be removed
-            this.Nfft = this.samples_per_input_request*2;
-            while any(mod(this.Nfft./this.down_facs,2) ~= 0)
+            Nfft_min = 16; % below this produces bad value comparison results
+            this.Nfft = max(this.samples_per_input_request*2, Nfft_min);
+%             this.Nfft = this.samples_per_input_request*2;
+
+            while any(mod(this.Nfft./this.down_facs,2) ~= 0) || any(mod(this.Nfft./this.up_facs,2) ~= 0)
                 this.Nfft = this.Nfft + 2;
             end
+%             while any(mod(this.Nfft.*this.up_facs./this.down_facs,1) ~= 0)
+%                 this.Nfft = this.Nfft + 2;
+%             end
+
             this.Niffts = this.Nfft*this.up_facs./this.down_facs;
             if any(mod(this.Niffts,2) ~= 0)
                 error('ERROR: Nifft is not an even number, something went wrong.')
             end 
-
-
-%             a = randperm(1000);
-%             b = randperm(1000);
-%             gcd_val = gcd(a,b);
-%             for nn = 1:length(a)
-%                 gcdc_val(nn) = ResamplerPlan.gcdc(a(nn),b(nn));
-%             end
-%             sum(gcd_val == gcdc_val);
         end
 
         function input_size = get_input_size(this)
@@ -99,12 +102,20 @@ classdef ResamplerPlan
             output_sizes = this.Niffts/2;
         end
 
+        function output_size = get_output_size(this,nn)
+            output_size = this.Niffts(nn)/2;
+        end
+
         function stft_size = get_stft_size(this)
             stft_size = this.Nfft;
         end
 
         function istft_sizes = get_istft_sizes(this)
             istft_sizes = this.Niffts;
+        end
+
+        function istft_size = get_istft_size(this,nn)
+            istft_size = this.Niffts(nn);
         end
 
         function sample_rate = get_sample_rate_in(this)
@@ -123,12 +134,20 @@ classdef ResamplerPlan
             fcs_out = this.center_freqs_out;
         end
 
+        function fc_out = get_fc_out(this, nn)
+            fc_out = this.center_freqs_out(nn);
+        end
+
         function bws_out = get_bws_out(this)
             bws_out = this.bandwidths_out;
         end
 
         function fs_outs = get_fs_outs(this)
             fs_outs = this.fs_outs;
+        end
+
+        function fs_out = get_fs_out(this, nn)
+            fs_out = this.fs_outs(nn);
         end
     end
 end
