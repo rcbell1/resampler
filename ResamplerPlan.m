@@ -28,44 +28,66 @@ classdef ResamplerPlan
     end
 
     methods
-        function this = ResamplerPlan(Nsamps, fs, P, Q, fcs, bws)
+        function this = ResamplerPlan(Nsamps, fs, ups, downs, fcs, bws)
             arguments
                 Nsamps (1,1) double {mustBeInteger, mustBeFinite}
                 fs (1,1) double {mustBeReal, mustBeFinite}
-                P {mustBeVector, mustBeInteger, mustBeFinite}
-                Q {mustBeVector, mustBeInteger, mustBeFinite}
+                ups {mustBeVector, mustBeInteger, mustBeFinite}
+                downs {mustBeVector, mustBeInteger, mustBeFinite}
                 fcs {mustBeVector, mustBeReal, mustBeFinite}
                 bws {mustBeVector, mustBeReal, mustBeFinite}
             end
 
-            lenP = length(P);
-            lenQ = length(Q);
-            lenfcs = length(fcs);
-            lenbws = length(bws);
-            if lenP ~= lenQ || lenP ~= lenfcs || lenP ~= lenbws
+            lenUps = length(ups);
+            lenDowns = length(downs);
+            lenFcs = length(fcs);
+            lenBws = length(bws);
+
+            if lenUps ~= lenDowns || lenUps ~= lenFcs || lenUps ~= lenBws
                 error('P, Q, fcs and bws must have the same length.')
+            end
+
+            if any(fs < 0)
+                error('USER ERROR: The input sample rate must be positive.')
+            end
+            
+            if any(bws < 0)
+                error('USER ERROR: Channel output bandwidths must be positive.')
+            end
+                        
+            if any(rem(ups,1)) || any(rem(downs,1)) ...
+                    || any(ups < 1) || any(downs < 1)
+                error('USER ERROR: up_fac and down_fac must be positive integers.');
+            end
+
+            if any(abs(fcs) > fs/2)
+                error('USER ERROR: The center frequencies out must be within the support defined by the input sample rate (-fs/2 < fc < fs/2).')
+            end
+            
+            this.fs_outs = fs*ups./downs;            
+
+            for nn = 1:length(ups)
+                if ups(nn) >= downs(nn)
+                
+                else
+                    if abs(fcs(nn)) + this.fs_outs(nn)/2 > fs/2
+                        error('USER ERROR: Channel %i: The center frequency out plus half the output sample rate must be within the support defined by the input sample rate (|fc|+fs_out/2 < fs/2).', nn)
+                    end
+                end
+            end
+
+            if any(this.fs_outs < bws)
+                error('USER ERROR: Your choice of output channel bandwidth is larger than the channels output sample rate which will lead to aliasing.')
             end
 
             this.samples_per_input_request = Nsamps;
             this.sample_rate_in = fs;
-            this.up_facs = P;
-            this.down_facs = Q;
+            this.up_facs = ups;
+            this.down_facs = downs;
             this.center_freqs_out = fcs;
             this.bandwidths_out = bws;
-            this.fs_outs = this.sample_rate_in*this.up_facs./this.down_facs;
-
-%             if any(abs(this.center_freqs_out) + this.fs_outs/2 > this.sample_rate_in/2)
-%                 error('USER ERROR: The center frequencies out plus half the output sample rate must be between -sample_rate_in/2 and sample_rate_in/2.')
-%             end
-%             if any(this.fs_outs < bws)
-%                 error('USER ERROR: Your choice of fc, bw and up_fac/down_fac will cause aliasing in the output channel.')
-%             end
 
             % Make up_fac and down_fac as small as possible while preserving ratio
-            if any(rem(this.up_facs,1)) || any(rem(this.down_facs,1)) ...
-                    || any(this.up_facs < 1) || any(this.down_facs < 1)
-                error('USER ERROR: up_fac and down_fac must be positive integers.');
-            end
             for nn = 1:length(this.fs_outs)
                 gcd_val(nn) = ResamplerPlan.gcdc(this.up_facs(nn), this.down_facs(nn));
             end
@@ -74,19 +96,16 @@ classdef ResamplerPlan
                 this.down_facs = this.down_facs./gcd_val;
             end
 
-            % Determine FFT size that will support the resample ratio (up_fac/down_fac)
-            % The requirement is FFT size divided by down_fac must be even so that the
-            % needed number of spectrum sample pairs can be removed
-            Nfft_min = 16; % below this produces bad value comparison results
+            % Determine FFT size that will support the resample ratio 
+            % (up_fac/down_fac). The requirement is FFT size divided by 
+            % up_facs and down_facs must be even so that the needed number 
+            % of spectrum sample pairs can be added or removed
+            Nfft_min = 16; % below this produces poorer results
             this.Nfft = max(this.samples_per_input_request*2, Nfft_min);
-%             this.Nfft = this.samples_per_input_request*2;
 
             while any(mod(this.Nfft./this.down_facs,2) ~= 0) || any(mod(this.Nfft./this.up_facs,2) ~= 0)
                 this.Nfft = this.Nfft + 2;
             end
-%             while any(mod(this.Nfft.*this.up_facs./this.down_facs,1) ~= 0)
-%                 this.Nfft = this.Nfft + 2;
-%             end
 
             this.Niffts = this.Nfft*this.up_facs./this.down_facs;
             if any(mod(this.Niffts,2) ~= 0)

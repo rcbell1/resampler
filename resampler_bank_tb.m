@@ -1,5 +1,7 @@
-% close all; 
-clear
+close all; clear
+
+etol = 1e-3; % error tolerance between output and expected output
+
 % Resampler parameters
 input_size_request = 4096; % requested samples per input slice
 fs = 100e6;      % sample rate (Hz)
@@ -13,27 +15,27 @@ fs = 100e6;      % sample rate (Hz)
 % bws_in = [1e6 2e6 3e6];
 
 % Single output channel
-up_facs = [3];      % upsampling factor
-down_facs = [1];   % downsampling factor
-fcs_out = [4e6];
-bws_out = [1.1e6];   % the output channels will be filtered down to these bandwidths
-fcs_in = [4e6];   % relative center frequency of input to produce at bb of output channel
-bws_in = [1e6];        % bandwidths, if bw = 1 a complex tone will be generated
+% up_facs = [3];      % upsampling factor
+% down_facs = [1];   % downsampling factor
+% fcs_out = [4e6];
+% bws_out = [1.1e6];   % the output channels will be filtered down to these bandwidths
+% fcs_in = [4e6];   % relative center frequency of input to produce at bb of output channel
+% bws_in = [1e6];        % bandwidths, if bw = 1 a complex tone will be generated
 
-up_facs = [1];      % upsampling factor
-down_facs = [15];   % downsampling factor
-fcs_out = [-4e6];
-bws_out = [2.1e6];   % the output channels will be filtered down to these bandwidths
-fcs_in = [-4e6];   % relative center frequency of input to produce at bb of output channel
-bws_in = [2e6];        % bandwidths, if bw = 1 a complex tone will be generated
+% up_facs = [1];      % upsampling factor
+% down_facs = [15];   % downsampling factor
+% fcs_out = [-4e6];
+% bws_out = [2.1e6];   % the output channels will be filtered down to these bandwidths
+% fcs_in = [-4e6];   % relative center frequency of input to produce at bb of output channel
+% bws_in = [2e6];        % bandwidths, if bw = 1 a complex tone will be generated
 
 % Two output channels, one up and one down
-up_facs = [7 9];      % upsampling factor
-down_facs = [3 15];   % downsampling factor
-fcs_out = [4e6 -4e6];
-bws_out = [1.1e6 2.1e6];   % the output channels will be filtered down to these bandwidths
-fcs_in = [4e6 -4e6];   % relative center frequency of input to produce at bb of output channel
-bws_in = [1e6 2e6];
+% up_facs = [7 9];      % upsampling factor
+% down_facs = [3 15];   % downsampling factor
+% fcs_out = [4e6 -4e6];
+% bws_out = [1.1e6 2.1e6];   % the output channels will be filtered down to these bandwidths
+% fcs_in = [4e6 -4e6];   % relative center frequency of input to produce at bb of output channel
+% bws_in = [1e6 2e6];
 
 % Overlapping output channels
 % up_facs = [3 3 1 61];      % upsampling factor
@@ -44,13 +46,13 @@ bws_in = [1e6 2e6];
 % bws_in = [250, 300, 350, 400];
 
 % ECTB Example 
-% input_size_request = 4096; % requested samples per input slice
-% up_facs = [1 1 1 1 1 1 1 1];
-% down_facs = [50 50 50 50 50 50 50 50];
-% fcs_out = [-2e6 -1.5e6 -1e6 -0.5e6 0e6 0.5e6 1e6 1.5e6];
-% bws_out = [230e3 230e3 230e3 230e3 230e3 230e3 230e3 230e3];
-% fcs_in = fcs_out;
-% bws_in = [200e3 200e3 200e3 200e3 200e3 200e3 200e3 200e3];
+input_size_request = 4096; % requested samples per input slice
+up_facs = [1 1 1 1 1 1 1 1];
+down_facs = [50 50 50 50 50 50 50 50];
+fcs_out = [-2e6 -1.5e6 -1e6 -0.5e6 0e6 0.5e6 1e6 1.5e6];
+bws_out = [230e3 230e3 230e3 230e3 230e3 230e3 230e3 230e3];
+fcs_in = fcs_out;
+bws_in = [200e3 200e3 200e3 200e3 200e3 200e3 200e3 200e3];
 
 
 % Create resampler plan
@@ -115,7 +117,6 @@ for nn = 1:length(fcs_out)
     nifft = rsb_plan_obj.get_istft_size(nn);
     output_size = rsb_plan_obj.get_output_size(nn);
     start = ceil(nifft/2) + 1;
-    etol = 1e-2;
     Nsamps = length(out{nn}(start:end-start+1));
     Ndeviations = sum(abs(out{nn}(start:end-start+1)-expected_out{nn}(start:start+Nsamps-1)) > etol);
     if Ndeviations == 0

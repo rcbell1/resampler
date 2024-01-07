@@ -185,19 +185,19 @@ classdef ResamplerBank < handle
             wtaps = taps.*fftshift(win);
             ftaps = fftshift(fft(wtaps)); % taps in frequency domain to apply
 
-            figure
-            plot(fftshift(taps),'.-'); hold all
-            plot(fftshift(wtaps),'.-')
-            title(sprintf('Time, Channel %i, Length %i', ch_idx, Nifft))
-            xlabel('Sample Number')
-            ylabel('Amplitude')
-            figure
-            faxis = -0.5:1/Nifft:0.5-1/Nifft;
-            plot(faxis, 10*log10(abs(ftaps)),'.-'); hold all
-            plot(faxis, 10*log10(abs(fftshift(fresp)+eps)),'.-')
-            title(sprintf('Frequency, Channel %i, Length %i', ch_idx, Nifft))
-            xlabel('Frequency (cyc/samp)')
-            ylabel('Log Mag')
+%             figure
+%             plot(fftshift(taps),'.-'); hold all
+%             plot(fftshift(wtaps),'.-')
+%             title(sprintf('Time, Channel %i, Length %i', ch_idx, Nifft))
+%             xlabel('Sample Number')
+%             ylabel('Amplitude')
+%             figure
+%             faxis = -0.5:1/Nifft:0.5-1/Nifft;
+%             plot(faxis, 10*log10(abs(ftaps)),'.-'); hold all
+%             plot(faxis, 10*log10(abs(fftshift(fresp)+eps)),'.-')
+%             title(sprintf('Frequency, Channel %i, Length %i', ch_idx, Nifft))
+%             xlabel('Frequency (cyc/samp)')
+%             ylabel('Log Mag')
         end
     end
 
