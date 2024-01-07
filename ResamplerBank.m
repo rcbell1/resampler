@@ -12,7 +12,9 @@ classdef ResamplerBank < handle
     %   filtered down to roughly this amount.
 
     % TODO:
-    % 1) Channel out filtering is not great, room for improvement
+    % 1) Channel out filtering is not great, room for improvement. It sucks
+    % that the performance depends on filter length and the length is
+    % decided by resampling requirements (i.e. NIFFT size). 
 
     properties
         plan_obj
@@ -30,7 +32,7 @@ classdef ResamplerBank < handle
         Niffts = 0; % the IFFT sizes of the ISTFTs
         fs_outs = 1; % the output channel sample rates (Hz)
         Nchannels = 1;
-        ebw = 0.3;
+        ebw = 0.1;
         ch_idx = 1; % the channel idx currently being processed
         fc_idxs; % start indices for fc down conversion
         slice_idx = 0; % count of the slice being processed
@@ -105,16 +107,18 @@ classdef ResamplerBank < handle
                 if this.up_facs(nn) >= this.down_facs(nn)
                     start_idx = this.Niffts(nn)/2 - this.Nfft/2 + 1;
                     stop_idx = start_idx + this.Nfft - 1;
-                    fft_out = circshift(fft_out, -foff, 2);
-                    this.synth_in_buf{nn}(start_idx:stop_idx) = phase_corr*fft_out;
+                    this.synth_in_buf{nn}(start_idx:stop_idx) = phase_corr*circshift(fft_out, -foff, 2);
                 else
                     start_idx = this.Nfft/2 - this.Niffts(nn)/2 + 1 + foff;
                     stop_idx = start_idx + this.Niffts(nn) - 1;
                     this.synth_in_buf{nn} = phase_corr*fft_out(start_idx:stop_idx);
                 end
+
+                % Nice info to see
                 fprintf("Channel %i, fs %f, fs out %f, fc out %.5f, Nfft %i, Nifft %i, foff %i, frem %.5f, start idx %i, stop idx %i\n", ...
                     nn, this.sample_rate_in, this.fs_outs(nn), this.center_freqs_out(nn), this.Nfft, this.Niffts(nn), ...
                     foff, frem, start_idx, stop_idx);
+
                 channels{nn} = this.synthesize(this.synth_in_buf{nn}, foff, frem, this.fs_outs(nn));
                 this.slice_idx(this.ch_idx) = this.slice_idx(this.ch_idx) + 1;
             end
@@ -125,7 +129,7 @@ classdef ResamplerBank < handle
     methods (Access = private)
         function out = synthesize(this, input, foff, frem, fs_out)
             % Filter the output channel below sample rate in freq domain
-            if fs_out > this.bandwidths_out(this.ch_idx) || this.bandwidths_out(this.ch_idx) == 0
+            if fs_out > this.bandwidths_out(this.ch_idx)
                 input = input .* this.channel_filts{this.ch_idx}; % filter operation in freq domain
             end
             ifft_out = this.up_facs(this.ch_idx)/this.down_facs(this.ch_idx)*ifft(ifftshift(input));
@@ -181,12 +185,19 @@ classdef ResamplerBank < handle
             wtaps = taps.*fftshift(win);
             ftaps = fftshift(fft(wtaps)); % taps in frequency domain to apply
 
-%             figure
-%             plot(fftshift(taps),'.-'); hold all
-%             plot(fftshift(wtaps),'.-')
-%             figure
-%             plot(10*log10(abs(ftaps)),'.-'); hold all
-%             plot(10*log10(abs(fftshift(fresp)+eps)),'.-')
+            figure
+            plot(fftshift(taps),'.-'); hold all
+            plot(fftshift(wtaps),'.-')
+            title(sprintf('Time, Channel %i, Length %i', ch_idx, Nifft))
+            xlabel('Sample Number')
+            ylabel('Amplitude')
+            figure
+            faxis = -0.5:1/Nifft:0.5-1/Nifft;
+            plot(faxis, 10*log10(abs(ftaps)),'.-'); hold all
+            plot(faxis, 10*log10(abs(fftshift(fresp)+eps)),'.-')
+            title(sprintf('Frequency, Channel %i, Length %i', ch_idx, Nifft))
+            xlabel('Frequency (cyc/samp)')
+            ylabel('Log Mag')
         end
     end
 
