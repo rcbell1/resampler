@@ -1,8 +1,8 @@
 classdef ResamplerBank < handle
     %RESAMPLER Rational resampler bank using an STFT and ISTFTs
     %   Given an input sequence with sample rate fs, N output channels with
-    %   samples rates given by fs*up_fac/down_fac can be formed. The 
-    %   up_fac/down_fac define the resample factor, where up_fac and 
+    %   samples rates given by fs*up_fac/down_fac can be formed. The
+    %   up_fac/down_fac define the resample factor, where up_fac and
     %   down_fac are N x 1 vectors of postive integers. In addition, a
     %   vector of output center frequencies can be provided that define the
     %   portion of the original input spectrum the resampled output channel
@@ -14,7 +14,7 @@ classdef ResamplerBank < handle
     % TODO:
     % 1) Channel out filtering is not great, room for improvement. It sucks
     % that the performance depends on filter length and the length is
-    % decided by resampling requirements (i.e. NIFFT size). 
+    % decided by resampling requirements (i.e. NIFFT size).
 
     properties
         plan_obj
@@ -66,7 +66,7 @@ classdef ResamplerBank < handle
             this.Niffts = plan_obj.get_istft_sizes();
 
             this.Nchannels = length(this.center_freqs_out);
-            this.slice_idx = zeros(1,this.Nchannels); 
+            this.slice_idx = zeros(1,this.Nchannels);
             this.stft_win = ResamplerBank.hannc(this.Nfft);
 
             this.stft_in_buf = zeros(1,this.Nfft/2);
@@ -75,7 +75,7 @@ classdef ResamplerBank < handle
                     this.synth_in_buf{nn} = zeros(1,this.Niffts(nn)); % stft output buffer
                 else
                     this.synth_in_buf{nn} = zeros(1,this.Nfft); % stft output buffer
-                end            
+                end
                 this.istft_out_bufs{nn} = zeros(1,this.Niffts(nn)/2); % istft output buffers
 
                 this.fc_idxs{nn} = -this.Niffts(nn)/2:-1;
@@ -95,7 +95,7 @@ classdef ResamplerBank < handle
 
             % Compute STFT output
             slice = [this.stft_in_buf input];
-            this.stft_in_buf = input;            
+            this.stft_in_buf = input;
             fft_out = fftshift(fft(slice.*this.stft_win));
 
             % Synthesize the output channels given STFT output
@@ -140,20 +140,20 @@ classdef ResamplerBank < handle
             fc_start_idx = this.fc_idxs{this.ch_idx}(end) + 1; % phase continuous across slices
             this.fc_idxs{this.ch_idx} = fc_start_idx:fc_start_idx + this.Niffts(this.ch_idx)/2 - 1;
 
-%             figure; 
-%             subplot(311); 
-%             plot(real(ifft_out(1:this.Niffts(this.ch_idx)/2)),'.-'); hold all
-%             plot(real(this.istft_out_bufs{this.ch_idx}))
-%             title('IFFT Out Real')
-%             legend('Current', 'Previous')
-%             subplot(312); 
-%             plot(imag(ifft_out(1:this.Niffts(this.ch_idx)/2)),'.-'); hold all
-%             plot(imag(this.istft_out_bufs{this.ch_idx}))
-%             title('IFFT Out Imag')
-%             legend('Current', 'Previous')
-%             subplot(313)
-%             plot(real(out))
-%             title('ISTFT Out (Sum)')
+            %             figure;
+            %             subplot(311);
+            %             plot(real(ifft_out(1:this.Niffts(this.ch_idx)/2)),'.-'); hold all
+            %             plot(real(this.istft_out_bufs{this.ch_idx}))
+            %             title('IFFT Out Real')
+            %             legend('Current', 'Previous')
+            %             subplot(312);
+            %             plot(imag(ifft_out(1:this.Niffts(this.ch_idx)/2)),'.-'); hold all
+            %             plot(imag(this.istft_out_bufs{this.ch_idx}))
+            %             title('IFFT Out Imag')
+            %             legend('Current', 'Previous')
+            %             subplot(313)
+            %             plot(real(out))
+            %             title('ISTFT Out (Sum)')
         end
 
         function ftaps = channel_filter(this, ch_idx)
@@ -164,9 +164,10 @@ classdef ResamplerBank < handle
             end
             Nifft = this.Niffts(ch_idx);
             Nones = ceil(bw/(this.fs_outs(ch_idx)/Nifft));
-            
+
             Nebw_min = 1; % min transition taps per side
-            Nebw = ceil((this.ebw*bw)/(this.sample_rate_in/Nifft));
+%             Nebw = ceil((this.ebw*bw)/(this.sample_rate_in/Nifft));
+            Nebw = ceil((this.ebw*bw)/(fs_out/Nifft));
             if Nebw < Nebw_min
                 Nones = Nones + 2*Nebw_min; % gives 2 bins min for transition either side
             else
@@ -185,19 +186,19 @@ classdef ResamplerBank < handle
             wtaps = taps.*fftshift(win);
             ftaps = fftshift(fft(wtaps)); % taps in frequency domain to apply
 
-%             figure
-%             plot(fftshift(taps),'.-'); hold all
-%             plot(fftshift(wtaps),'.-')
-%             title(sprintf('Time, Channel %i, Length %i', ch_idx, Nifft))
-%             xlabel('Sample Number')
-%             ylabel('Amplitude')
-%             figure
-%             faxis = -0.5:1/Nifft:0.5-1/Nifft;
-%             plot(faxis, 10*log10(abs(ftaps)),'.-'); hold all
-%             plot(faxis, 10*log10(abs(fftshift(fresp)+eps)),'.-')
-%             title(sprintf('Frequency, Channel %i, Length %i', ch_idx, Nifft))
-%             xlabel('Frequency (cyc/samp)')
-%             ylabel('Log Mag')
+            %             figure
+            %             plot(fftshift(taps),'.-'); hold all
+            %             plot(fftshift(wtaps),'.-')
+            %             title(sprintf('Time, Channel %i, Length %i', ch_idx, Nifft))
+            %             xlabel('Sample Number')
+            %             ylabel('Amplitude')
+            %             figure
+            %             faxis = -0.5:1/Nifft:0.5-1/Nifft;
+            %             plot(faxis, 10*log10(abs(ftaps)),'.-'); hold all
+            %             plot(faxis, 10*log10(abs(fftshift(fresp)+eps)),'.-')
+            %             title(sprintf('Frequency, Channel %i, Length %i', ch_idx, Nifft))
+            %             xlabel('Frequency (cyc/samp)')
+            %             ylabel('Log Mag')
         end
     end
 
